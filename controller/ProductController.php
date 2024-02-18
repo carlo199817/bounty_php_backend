@@ -4,17 +4,12 @@
     if (isset($uri[2])) {
         $requestID  = (int) $uri[2];
     } 
-  /*  if (isset($_POST["name"])){ 
+    if (isset($_POST["name"])){ 
         $name = $_POST["name"];
-    }else*/  
-    if (isset($_PATCH["name"])){ 
-        $name = $_PATCH["name"];
     }else { 
-       echo json_encode($_PATCH["name"]);
         $name = null; 
     }  
 
-   echo json_encode($name);
     $requestMethod = $_SERVER["REQUEST_METHOD"];
     $controller = new ProductController($requestMethod,$requestID,$name);
     $controller->processRequest();
@@ -101,7 +96,7 @@ class ProductController {
         $product->setName($this->name);
         $entityManager->persist($product);
         $entityManager->flush();
-        $response['status_code_header'] = 'HTTP/1.1 200 OK';
+        $response['status_code_header'] = 'HTTP/1.1 201 created';
         $response['body'] = json_encode(['id'=>$product->id(),'name'=>$product->name()]);
         return $response;
 
@@ -109,14 +104,14 @@ class ProductController {
     
     private function patchProduct()
     {
-  
-        require_once "bootstrap.php";
+       $input = (array) json_decode(file_get_contents('php://input'), TRUE);
+    require_once "bootstrap.php";
         $product = $entityManager->find('product', $this->requestID);
         if ($product) {
-            $product->setName("SDS"); 
+            $product->setName($input['name']); 
             $entityManager->flush();
             $response['status_code_header'] = 'HTTP/1.1 200 OK';
-            $response['body'] = json_encode(['Message'=>'SUCCESS']);
+            $response['body'] = json_encode(['id'=>$this->requestID,'name'=>$input['name']]);
         }else{
             $response['status_code_header'] = 'HTTP/1.1 404 Not Found';
             $response['body'] = json_encode(['Message'=>'ID NOT FOUND']);
@@ -125,11 +120,19 @@ class ProductController {
 
     return $response;
     }
-
     private function deleteProduct()
     {
-        $response['status_code_header'] = 'HTTP/1.1 200 OK';
-        $response['body'] = "This is Delete $this->requestID";
+            require_once "bootstrap.php";
+            $product = $entityManager->find('product', $this->requestID);
+            if($product){
+                $entityManager->remove($product);
+                $entityManager->flush();
+                $response['status_code_header'] = 'HTTP/1.1 404 Not Found';
+                $response['body'] = json_encode(['Message'=>'Deleted']);
+            }else{
+                $response['status_code_header'] = 'HTTP/1.1 404 Not Found';
+                $response['body'] = json_encode(['Message'=>'ID NOT FOUND']);
+            } 
         return $response;
     }
 
