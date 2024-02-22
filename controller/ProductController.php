@@ -60,10 +60,14 @@ class ProductController {
         $repositoryList = [];
         $productRepository = $entityManager->getRepository('Product')->findAll();
         $products = $productRepository;
+    
         echo header('Content-Type: application/json; charset=utf-8');
         $response['status_code_header'] = 'HTTP/1.1 200 OK';
+
+
         foreach ($products as $product) {
-           array_push($repositoryList, ['id'=>$product->id(),"name"=>$product->name()]); 
+           array_push($repositoryList, ['id'=>$product->id(),"name"=>$product->name(),"address"=>["country"=>$product->getAddress()->getCountry(),
+           "street"=>$product->getAddress()->getStreet(),"city"=>$product->getAddress()->getCity(),  "postalCode"=>$product->getAddress()->getPostal()]]); 
         }
         $response['body'] = json_encode($repositoryList);
         return $response;
@@ -77,7 +81,8 @@ class ProductController {
         $products = $productRepository->find($this->requestID);
         if ($products) {
             foreach ([$products] as $product) {
-                array_push($repositoryList, ['id'=>$product->id(),"name"=>$product->name()]); 
+                array_push($repositoryList, ['id'=>$product->id(),"name"=>$product->name(),"address"=>["country"=>$product->getAddress()->getCountry(),
+                "street"=>$product->getAddress()->getStreet(),"city"=>$product->getAddress()->getCity(),  "postalCode"=>$product->getAddress()->getPostal()]]); 
              }
             $response['status_code_header'] = 'HTTP/1.1 200 OK';
             $response['body'] = json_encode($repositoryList[0]);
@@ -92,12 +97,24 @@ class ProductController {
     private function postProduct()
     {
         require_once "bootstrap.php";
+        $repositoryList = [];
+        $input = (array) json_decode(file_get_contents('php://input'), TRUE);
         $product = new Product();
-        $product->setName($this->name);
+        $product->setName($input['name']);
+        $address = $entityManager->find(Address::class,$input['address']); 
+
+        $product->setAddress($address);
         $entityManager->persist($product);
         $entityManager->flush();
+
+        $productRepository = $entityManager->getRepository('Product');
+        $products = $productRepository->find($product->id());
+        foreach ([$products] as $product) {
+            array_push($repositoryList, ['id'=>$product->id(),"name"=>$product->name(),"address"=>["country"=>$product->getAddress()->getCountry(),
+            "street"=>$product->getAddress()->getStreet(),"city"=>$product->getAddress()->getCity(),  "postalCode"=>$product->getAddress()->getPostal()]]); 
+         }
         $response['status_code_header'] = 'HTTP/1.1 201 created';
-        $response['body'] = json_encode(['id'=>$product->id(),'name'=>$product->name()]);
+        $response['body'] = json_encode($repositoryList[0]);
         return $response;
 
     }
